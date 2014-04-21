@@ -54,7 +54,7 @@ sub find {
                     next;
                 }
 
-                # else part in two...
+                # else part it in two...
 
                 my $ix = ($a->[_c0] - $a->[_c1])->max_component_index;
                 my ($avs0, $avs1) = nkeypartref { $_->[$ix] } @$avs / 2 => @$avs;
