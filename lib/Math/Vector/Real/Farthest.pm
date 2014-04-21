@@ -25,7 +25,7 @@ sub find {
     my ($best_v0, $best_v1);
     my ($c0, $c1) = Math::Vector::Real->box(@_);
     my $max_comp = ($c1 - $c0)->max_component;
-    $best_d2 = 0.99999 * $max_comp * $max_comp;
+    $best_d2 = 0; # 0.99999 * $max_comp * $max_comp;
     if (my $d2 = Math::Vector::Real::dist2($c0, $c1)) {
         my $s = [$c0, $c1, scalar(@_), [@_]];
         my @a = $s;
