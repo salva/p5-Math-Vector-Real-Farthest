@@ -1,34 +1,114 @@
 package Math::Vector::Real::Farthest;
 
-use 5.018002;
+our $VERSION = '0.01';
+
 use strict;
 use warnings;
 
-require Exporter;
+use Math::Vector::Real;
+use Sort::Key::Top qw(nkeypartref);
 
-our @ISA = qw(Exporter);
+use constant _c0 => 0;
+use constant _c1 => 1;
+use constant _n  => 2;
+use constant _vs => 3;
+use constant _s0 => 4;
+use constant _s1 => 5;
 
-# Items to export into callers namespace by default. Note: do not export
-# names by default without a very good reason. Use EXPORT_OK instead.
-# Do not simply export all your public functions/methods/constants.
+use constant _threshold => 5;
 
-# This allows declaration	use Math::Vector::Real::Farthest ':all';
-# If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
-# will save memory.
-our %EXPORT_TAGS = ( 'all' => [ qw(
-	
-) ] );
+sub find {
+    my $class = shift;
+    return unless @_;
+    my $best_d2 = 0;
+    my $O = 1;
+    my ($best_v0, $best_v1);
+    my ($c0, $c1) = Math::Vector::Real->box(@_);
+    my $max_comp = ($c1 - $c0)->max_component;
+    $best_d2 = 0.99999 * $max_comp * $max_comp;
+    if (my $d2 = Math::Vector::Real::dist2($c0, $c1)) {
+        my $s = [$c0, $c1, scalar(@_), [@_]];
+        my @a = $s;
+        my @b = $s;
+        my @d2 = $d2;
+        while (@d2) {
+            my $d2 = pop @d2;
+            $d2 > $best_d2 or last;
+            $O++;
+            my $a = pop @a;
+            my $b = pop @b;
+            ($a, $b) = ($b, $a) if ($a->[_n] < $b->[_n]);
+            if (my $avs = $a->[_vs]) {
+                if ($a->[_n] <= _threshold) {
+                    # brute force
+                    for my $v0 (@{$b->[_vs]}) {
+                        for my $v1 (@$avs) {
+                            my $d2 = Math::Vector::Real::dist2($v0, $v1);
+                            if ($best_d2 < $d2) {
+                                $best_d2 = $d2;
+                                $best_v0 = $v0;
+                                $best_v1 = $v1;
+                            }
+                        }
+                    }
+                    next;
+                }
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+                # else part in two...
 
-our @EXPORT = qw(
-	
-);
+                my $ix = ($a->[_c0] - $a->[_c1])->max_component_index;
+                my ($avs0, $avs1) = nkeypartref { $_->[$ix] } @$avs / 2 => @$avs;
+                $a->[_s0] = [Math::Vector::Real->box(@$avs0), scalar(@$avs0), $avs0];
+                $a->[_s1] = [Math::Vector::Real->box(@$avs1), scalar(@$avs1), $avs1];
+                undef $a->[_vs];
 
-our $VERSION = '0.01';
+                # and fall-through...
+            }
 
+            for my $s (@{$a}[_s0, _s1]) {
+                my $d2 = Math::Vector::Real->max_dist2_between_boxes(@{$s}[_c0, _c1], @{$b}[_c0, _c1]);
+                if ($d2 > $best_d2) {
+                    my $p;
+                    for ($p = @d2; $p > 0; $p--) {
+                        last if $d2[$p - 1] <= $d2;
+                    }
+                    splice @d2, $p, 0, $d2;
+                    splice @a, $p, 0, $s;
+                    splice @b, $p, 0, $b;
+                }
+            }
+            # print "@d2\n";
+        }
+    }
+    else {
+        $best_v0 = $_[0];
+        $best_v1 = $_[0];
+    }
+    wantarray ? ($best_d2, V(@$best_v0), V(@$best_v1), $O) : $best_d2;
+}
 
-# Preloaded methods go here.
+sub find_brute_force {
+    my $class = shift;
+    return unless @_;
+    my $best_d2 = 0;
+    my $best_v0 = $_[0];
+    my $best_v1 = $_[0];
+
+    for my $i (0..$#_) {
+        for my $j ($i + 1..$#_) {
+            my $vi = $_[$i];
+            my $vj = $_[$j];
+            my $d2 = Math::Vector::Real::dist2($vi, $vj);
+            if ($d2 > $best_d2) {
+                $best_d2 = $d2;
+                $best_v0 = $vi;
+                $best_v1 = $vj;
+            }
+        }
+    }
+
+    wantarray ? ($best_d2, V(@$best_v0), V(@$best_v1)) : $best_d2;
+}
 
 1;
 __END__
