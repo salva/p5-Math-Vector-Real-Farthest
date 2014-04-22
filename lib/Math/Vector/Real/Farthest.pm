@@ -6,11 +6,11 @@ use strict;
 use warnings;
 
 use Math::Vector::Real;
-use Sort::Key::Top qw(nkeypartref);
+use Sort::Key::Top qw(nkeypartref ntop);
+use Sort::Key::Radix qw(nkeysort);
 use Math::nSphere qw(nsphere_volumen);
 
 our $optimization_core = 1;
-our $optimization_asymmetric = 1;
 
 use constant _c0 => 0;
 use constant _c1 => 1;
@@ -21,8 +21,7 @@ use constant _s1 => 5;
 
 use constant _threshold => 5;
 
-sub find_brute_force {
-    my $class = shift;
+sub _find_brute_force {
     return unless @_;
     my $best_d2 = 0;
     my $best_v0 = $_[0];
@@ -44,12 +43,92 @@ sub find_brute_force {
     wantarray ? ($best_d2, V(@$best_v0), V(@$best_v1)) : $best_d2;
 }
 
+sub _find_1d {
+    my $max = $_[0][0];
+    my $min = $max;
+    shift if @_ & 1;
+    while (@_) {
+        my $a = shift->[0];
+        my $b = shift->[0];
+        if ($a > $b) {
+            $max = $a if $a > $max;
+            $min = $b if $b < $min;
+        }
+        else {
+            $max = $b if $b > $max;
+            $min = $a if $a < $min;
+        }
+    }
+    my $d = $max - $min;
+    my $d2 = $d * $d;
+    wantarray ? ($d2, V($min), V($max)) : $d2;
+}
+
+sub _convex_hull_2d {
+    return @_ if @_ < 2;
+
+    my @p = nkeysort { $_->[0] } @_;
+
+    my (@u, @l);
+    my $i = 0;
+    while ($i < @p) {
+        my $iu = my $il = $i;
+        my ($x, $yu) = @{$p[$i]};
+        my $yl = $yu;
+        # search for upper and lower Y for the current X
+        while (++$i < @p and $p[$i][0] == $x) {
+            my $y = $p[$i][1];
+            if ($y < $yl) {
+                $il = $i;
+                $yl = $y;
+            }
+            elsif ($y > $yu) {
+                $iu = $i;
+                $yu = $y;
+            }
+        }
+        while (@l >= 2) {
+            my ($ox, $oy) = @{$l[-2]};
+            last if ($l[-1][1] - $oy) * ($x - $ox) < ($yl - $oy) * ($l[-1][0] - $ox);
+            pop @l;
+        }
+        push @l, $p[$il];
+        while (@u >= 2) {
+            my ($ox, $oy) = @{$u[-2]};
+            last if ($u[-1][1] - $oy) * ($x - $ox) > ($yu - $oy) * ($u[-1][0] - $ox);
+            pop @u;
+        }
+        push @u, $p[$iu];
+    }
+
+    # remove points from the upper hull extremes when they are already
+    # on the lower hull:
+    shift @u if $u[0][1] == $l[0][1];
+    pop @u if @u and $u[-1][1] == $l[-1][1];
+
+    return (@l, reverse @u);
+}
+
+sub _find_2d {
+    shift;
+    my @ch = _convex_hull_2d(@_);
+    # play the rotating calipers.
+}
+
 sub find {
+    shift;
+
+    @_ or return;
+
+    my $dim = @{$_[1]};
+
+    # use specialized algorithm for 1D
+    $dim == 1 and goto &_find_1d;
 
     # for a few elements the brute force algorithm works better
-    @_ < 11 and goto &find_brute_force;
+    @_ < 12 and goto &_find_brute_force;
 
-    my $class = shift;
+    shift;
     my $O = 1;
     my ($best_v0, $best_v1,);
     my ($c0, $c1) = Math::Vector::Real->box(@_);
@@ -59,7 +138,6 @@ sub find {
     if ($best_d2) {
 
         my $vs0;
-        my $zero = 0.5 * ($c0 + $c1);
 
         if ($optimization_core) {
             # There is a place in the center of the box which is
@@ -98,6 +176,7 @@ sub find {
 
             if ($nellipsoid_volumen > $ncube_volumen * 0.1) {
                 # we aim at discarding at least 10% of the points
+                my $zero = 0.5 * ($c0 + $c1);
                 my $corner = $c0 - $zero;
                 $vs0 = [grep { Math::Vector::Real::dist2($corner, ($_ - $zero)->first_orthant_reflection) > $best_d2 } @_];
                 # printf("filtered %d => %d (%.2f%%, estimated %.2f%%)\n",
@@ -117,16 +196,7 @@ sub find {
 
         my @d2 = $diag->abs2;
         my @a = [$c0, $c1, scalar(@$vs0), $vs0];
-        my @b;
-
-        if ($optimization_asymmetric) {
-            my $best_half_d2 = 0.25 * $best_d2;
-            my $vs1 = [ grep { Math::Vector::Real::dist2($zero, $_) > $best_half_d2 } @$vs0];
-            @b = [$c0, $c1, scalar(@$vs1), $vs1];
-        }
-        else {
-            @b = @a;
-        }
+        my @b = @a;
 
         while (@d2) {
             my $d2 = pop @d2;
@@ -182,6 +252,11 @@ sub find {
         $best_v1 = $_[0];
     }
     wantarray ? ($best_d2, V(@$best_v0), V(@$best_v1), $O) : $best_d2;
+}
+
+sub find_brute_force {
+    shift;
+    goto &_find_brute_force;
 }
 
 1;
