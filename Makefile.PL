@@ -1,12 +1,15 @@
-use 5.018002;
+
 use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
-WriteMakefile(
-    NAME              => 'Math::Vector::Real::Farthest',
-    VERSION_FROM      => 'lib/Math/Vector/Real/Farthest.pm', # finds $VERSION
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Math/Vector/Real/Farthest.pm', # retrieve abstract from module
-       AUTHOR         => 'Salvador Fandiño <salva@>') : ()),
+
+WriteMakefile( NAME          => 'Math::Vector::Real::Farthest',
+
+               VERSION_FROM  => 'lib/Math/Vector/Real/Farthest.pm',
+
+               PREREQ_PM     => { 'Sort::Key::Top'     => '0.06',
+                                  'Math::nSphere'      => '0.01',
+                                  'Math::Vector::Real' => '0.11' },
+
+               ABSTRACT_FROM => 'lib/Math/Vector/Real/Farthest.pm',
+
+               AUTHOR        => 'Salvador Fandiño <sfandino@yahoo.com>',
 );
