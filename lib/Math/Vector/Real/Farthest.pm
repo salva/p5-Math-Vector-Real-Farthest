@@ -24,8 +24,7 @@ use constant _threshold => 5;
 sub _find_brute_force {
     return unless @_;
     my $best_d2 = 0;
-    my $best_v0 = $_[0];
-    my $best_v1 = $_[0];
+    my @best_vs = ($_[0], $_[0]);
 
     for my $i (0..$#_) {
         for my $j ($i + 1..$#_) {
@@ -34,13 +33,12 @@ sub _find_brute_force {
             my $d2 = Math::Vector::Real::dist2($vi, $vj);
             if ($d2 > $best_d2) {
                 $best_d2 = $d2;
-                $best_v0 = $vi;
-                $best_v1 = $vj;
+                @best_vs = ($vi, $vj);
             }
         }
     }
 
-    wantarray ? ($best_d2, V(@$best_v0), V(@$best_v1)) : $best_d2;
+    wantarray ? ($best_d2, map(V(@$_), @best_vs)) : $best_d2;
 }
 
 sub _find_1d {
@@ -64,9 +62,7 @@ sub _find_1d {
     wantarray ? ($d2, V($min), V($max)) : $d2;
 }
 
-sub _convex_hull_2d {
-    return @_ if @_ < 2;
-
+sub _find_2d {
     my @p = nkeysort { $_->[0] } @_;
 
     my (@u, @l);
@@ -101,40 +97,68 @@ sub _convex_hull_2d {
         push @u, $p[$iu];
     }
 
-    # remove points from the upper hull extremes when they are already
-    # on the lower hull:
-    shift @u if $u[0][1] == $l[0][1];
-    pop @u if @u and $u[-1][1] == $l[-1][1];
+    my $first_u = shift @u;
+    my $last_l  = shift @l;
+    unshift @l, $first_u unless @l and $l[ 0][1] == $first_u->[1];
+    push    @u, $last_l  unless @u and $u[-1][1] == $last_l ->[1];
 
-    return (@l, reverse @u);
+    my @best_vs = 
+    my $best_d2 = 
+
+    if (@u == 1) {
+        @best_vs = ($u[0], $l[0]);
+        $best_d2 = Math::Vector::Real::dist2(@best_vs);
+    }
+    else {
+        my @dir = [0, -1];
+        my $best_d = 
+    }
+
+    shift @u if $u[0][1] == $l[0][1];
+
+
+    pop @l if @u and $u[-1][1] == $l[-1][1];
+
+    
 }
 
 sub _find_2d {
     shift;
     my @ch = _convex_hull_2d(@_);
-    # play the rotating calipers.
+    # play the rotating calipers dance.
 }
 
 sub find {
     shift;
 
-    @_ or return;
+    return unless @_;
+    my $dim = @{$_[0]};
 
-    my $dim = @{$_[1]};
+    my @vs;
+    if (@_ <= 10) {
+        if (@_ <= 2) {
+            # shortcut for sets of 1 and 2 elements
+            my @best_vs = @_[0, -1];
+            my $best_d2 = Math::Vector::Real::dist2(@best_vs);
+            return (wantarray ? (map(V(@$_), @best_vs), $best_d2) : $best_d2);
+        }
+        $dim > 1 and goto &_find_brute_force;
+    }
 
-    # use specialized algorithm for 1D
-    $dim == 1 and goto &_find_1d;
+    if ($dim <= 2) {
+        # use specialized algorithm for 1D
+        $dim == 1 and goto &_find_1d;
 
-    # for a few elements the brute force algorithm works better
-    @_ < 12 and goto &_find_brute_force;
+        # use specialized algorithm for 2D
+        goto &_find_2d;
+    }
 
-    shift;
+    my ($best_d2, @best_vs);
     my $O = 1;
-    my ($best_v0, $best_v1,);
     my ($c0, $c1) = Math::Vector::Real->box(@_);
     my $diag = $c1 - $c0;
     my $max_comp = $diag->max_component;
-    my $best_d2 = $max_comp * $max_comp;
+    $best_d2 = $max_comp * $max_comp;
     if ($best_d2) {
 
         my $vs0;
@@ -213,8 +237,7 @@ sub find {
                             my $d2 = Math::Vector::Real::dist2($v0, $v1);
                             if ($best_d2 < $d2) {
                                 $best_d2 = $d2;
-                                $best_v0 = $v0;
-                                $best_v1 = $v1;
+                                @best_vs = ($v0, $v1);
                             }
                         }
                     }
@@ -248,10 +271,9 @@ sub find {
         }
     }
     else {
-        $best_v0 = $_[0];
-        $best_v1 = $_[0];
+        @best_vs = ($_[0], $_[0]);
     }
-    wantarray ? ($best_d2, V(@$best_v0), V(@$best_v1), $O) : $best_d2;
+    wantarray ? ($best_d2, map(V(@$_), @best_vs)) : $best_d2;
 }
 
 sub find_brute_force {
