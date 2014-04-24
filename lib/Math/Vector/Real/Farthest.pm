@@ -251,7 +251,7 @@ sub find {
 
         my @d2 = $diag->abs2;
         my @a = [$c0, $c1, scalar(@$vs0), $vs0];
-        my @b = @a;
+        my @b = undef;
 
         while (@d2) {
             my $d2 = pop @d2;
@@ -259,16 +259,30 @@ sub find {
             $O++;
             my $a = pop @a;
             my $b = pop @b;
-            ($a, $b) = ($b, $a) if ($a->[_n] < $b->[_n]);
+            ($a, $b) = ($b, $a) if $b and $a->[_n] < $b->[_n];
             if (my $avs = $a->[_vs]) {
                 if ($a->[_n] <= _threshold) {
-                    # brute force
-                    for my $v0 (@{$b->[_vs]}) {
-                        for my $v1 (@$avs) {
-                            my $d2 = Math::Vector::Real::dist2($v0, $v1);
-                            if ($best_d2 < $d2) {
-                                $best_d2 = $d2;
-                                @best_vs = ($v0, $v1);
+                    if ($b) {
+                        # brute force
+                        for my $v0 (@{$b->[_vs]}) {
+                            for my $v1 (@$avs) {
+                                my $d2 = Math::Vector::Real::dist2($v0, $v1);
+                                if ($best_d2 < $d2) {
+                                    $best_d2 = $d2;
+                                    @best_vs = ($v0, $v1);
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        for my $i (1..$#$avs) {
+                            my $v0 = $avs->[$i];
+                            for my $v1 (@$avs[0 .. $i - 1]) {
+                                my $d2 = Math::Vector::Real::dist2($v0, $v1);
+                                if ($best_d2 < $d2) {
+                                    $best_d2 = $d2;
+                                    @best_vs = ($v0, $v1);
+                                }
                             }
                         }
                     }
@@ -276,7 +290,6 @@ sub find {
                 }
 
                 # else part it in two...
-
                 my $ix = ($a->[_c0] - $a->[_c1])->max_component_index;
                 my ($avs0, $avs1) = nkeypartref { $_->[$ix] } @$avs / 2 => @$avs;
                 $a->[_s0] = [Math::Vector::Real->box(@$avs0), scalar(@$avs0), $avs0];
@@ -286,19 +299,41 @@ sub find {
                 # and fall-through...
             }
 
-            for my $s (@{$a}[_s0, _s1]) {
-                my $d2 = Math::Vector::Real->max_dist2_between_boxes(@{$s}[_c0, _c1], @{$b}[_c0, _c1]);
+            my ($a0, $a1) = @{$a}[_s0, _s1];
+            # If $b is defined we generate the combinations ($a0-$b,
+            # $a1-$b), otherwise it means we want to compare a with
+            # itself and so we generate the trio of pairs ($a0-$a1,
+            # $a0-$a0, $a1-$a1).
+            my (@na, @nb, @nd2);
+            if ($b) {
+                @na = ($a0, $a1);
+                @nb = ($b, $b);
+                @nd2 = (Math::Vector::Real->max_dist2_between_boxes(@{$a0}[_c0, _c1], @{$b}[_c0, _c1]),
+                        Math::Vector::Real->max_dist2_between_boxes(@{$a1}[_c0, _c1], @{$b}[_c0, _c1]));
+            }
+            else {
+                @na = ($a0, $a0, $a1);
+                @nb = ($a1);
+                @nd2 = (Math::Vector::Real->max_dist2_between_boxes(@{$a0}[_c0, _c1], @{$a1}[_c0, _c1]),
+                        Math::Vector::Real::dist2(@{$a0}[_c0, _c1]),
+                        Math::Vector::Real::dist2(@{$a1}[_c0, _c1]));
+            }
+
+            while (@na) {
+                my $a = shift @na;
+                my $b = shift @nb;
+                my $d2 = shift @nd2;
+
                 if ($d2 > $best_d2) {
                     my $p;
                     for ($p = @d2; $p > 0; $p--) {
                         last if $d2[$p - 1] <= $d2;
                     }
                     splice @d2, $p, 0, $d2;
-                    splice @a, $p, 0, $s;
+                    splice @a, $p, 0, $a;
                     splice @b, $p, 0, $b;
                 }
             }
-            # print "@d2\n";
         }
     }
     else {
