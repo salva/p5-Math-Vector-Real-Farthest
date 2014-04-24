@@ -6,11 +6,13 @@ use strict;
 use warnings;
 
 use Math::Vector::Real;
-use Sort::Key::Top qw(nkeypartref ntop);
+use Sort::Key::Top qw(nkeypartref);
 use Sort::Key::Radix qw(nkeysort);
 use Math::nSphere qw(nsphere_volumen);
+use Carp;
 
 our $optimization_core = 1;
+our $optimization_convex_hull = 0;
 
 use constant _c0 => 0;
 use constant _c1 => 1;
@@ -22,7 +24,6 @@ use constant _s1 => 5;
 use constant _threshold => 5;
 
 sub _find_brute_force {
-    return unless @_;
     my $best_d2 = 0;
     my @best_vs = ($_[0], $_[0]);
 
@@ -38,7 +39,7 @@ sub _find_brute_force {
         }
     }
 
-    wantarray ? ($best_d2, map(V(@$_), @best_vs)) : $best_d2;
+    wantarray ? ($best_d2, map V(@$_), @best_vs) : $best_d2;
 }
 
 sub _find_1d {
@@ -62,8 +63,21 @@ sub _find_1d {
     wantarray ? ($d2, V($min), V($max)) : $d2;
 }
 
-sub _find_2d {
+sub _find_2d_convex_hull {
     my @p = nkeysort { $_->[0] } @_;
+
+    # use GD;
+    # my $size = 1024;
+    # my $im = new GD::Image($size, $size);
+    # my $white = $im->colorAllocate(255,255,255);
+    # my $black = $im->colorAllocate(0,0,0);
+    # my $blue = $im->colorAllocate(0,0,255);
+    # my $red = $im->colorAllocate(255,0,0);
+    # my $green = $im->colorAllocate(0,255,0);
+    # my $gray = $im->colorAllocate(200, 200, 200);
+    # my $yellow = $im->colorAllocate(255, 255, 0);
+    # $im->rectangle(0, 0, $size, $size, $white);
+    # $im->filledEllipse($_->[0] * $size, $_->[1] * $size, 2, 2, $black) for @p;
 
     my (@u, @l);
     my $i = 0;
@@ -97,35 +111,56 @@ sub _find_2d {
         push @u, $p[$iu];
     }
 
-    my $first_u = shift @u;
-    my $last_l  = shift @l;
-    unshift @l, $first_u unless @l and $l[ 0][1] == $first_u->[1];
-    push    @u, $last_l  unless @u and $u[-1][1] == $last_l ->[1];
+    # $im->filledEllipse($_->[0] * $size, $_->[1] * $size, 12, 12, $blue) for @u;
+    # $im->filledEllipse($_->[0] * $size, $_->[1] * $size, 12, 12, $green) for @l;
 
-    my @best_vs = 
-    my $best_d2 = 
+    my $u = $l[-1];
+    my $l = $u[0];
+    my $d = V(0,  1);
+    pop @u if $u->[1] == $u[-1][1];
+    shift @l if $l->[1] == $l[0][1];
+    my $best_d2 = 0;
+    my @best_vs = ($u, $u);
+    while (1) {
+        # print "u: $u, l: $l\n";
+        # $im->line(map($_ * $size, @$u, @$l), $yellow);
+        my $d2 = Math::Vector::Real::dist2($u, $l);
+        if ($d2 > $best_d2) {
+            $best_d2 = $d2;
+            @best_vs = ($u, $l);
+        }
 
-    if (@u == 1) {
-        @best_vs = ($u[0], $l[0]);
-        $best_d2 = Math::Vector::Real::dist2(@best_vs);
+        if (not @u) {
+            last unless @l;
+            $l = shift @l;
+        }
+        elsif(not @l) {
+            $u = pop @u;
+        }
+        else {
+            my $du = Math::Vector::Real::versor($u[-1] - $u);
+            my $dl = Math::Vector::Real::versor($l - $l[0]);
+            if ($du * $d > $dl * $d) {
+                $u = pop @u;
+                $d = $du;
+            }
+            else {
+                $l = shift @l;
+                $d = $dl;
+            }
+        }
     }
-    else {
-        my @dir = [0, -1];
-        my $best_d = 
-    }
-
-    shift @u if $u[0][1] == $l[0][1];
 
 
-    pop @l if @u and $u[-1][1] == $l[-1][1];
-
-    
-}
-
-sub _find_2d {
-    shift;
-    my @ch = _convex_hull_2d(@_);
-    # play the rotating calipers dance.
+    #my ($alt_d2, @alt_vs) = _find_brute_force(@_);
+    #if ($alt_d2 != $best_d2) {
+    #$im->filledEllipse($_->[0] * $size, $_->[1] * $size, 8, 8, $gray) for @best_vs;
+    #$im->filledEllipse($_->[0] * $size, $_->[1] * $size, 4, 4, $red) for @alt_vs;
+    #open my $fh, '>', "frame.png";
+    #print $fh $im->png;
+    #exit -1;
+    #}
+    wantarray ? ($best_d2, map V(@$_), @best_vs) : $best_d2;
 }
 
 sub find {
@@ -140,7 +175,7 @@ sub find {
             # shortcut for sets of 1 and 2 elements
             my @best_vs = @_[0, -1];
             my $best_d2 = Math::Vector::Real::dist2(@best_vs);
-            return (wantarray ? (map(V(@$_), @best_vs), $best_d2) : $best_d2);
+            return (wantarray ? ($best_d2, map V(@$_), @best_vs) : $best_d2);
         }
         $dim > 1 and goto &_find_brute_force;
     }
@@ -150,7 +185,7 @@ sub find {
         $dim == 1 and goto &_find_1d;
 
         # use specialized algorithm for 2D
-        goto &_find_2d;
+        goto &_find_2d_convex_hull if $optimization_convex_hull;
     }
 
     my ($best_d2, @best_vs);
@@ -171,8 +206,9 @@ sub find {
             # heuristic works well when the vectors are evenly
             # distributed.
 
-            # TODO: benchmark with and without this optimization to
-            # discover if it really makes a difference
+            # Benchmarks show that this optimization can provide a
+            # huge gain in some cases while non impacting performance
+            # on the rest.
 
             my $nellipsoid_volumen = nsphere_volumen(scalar(@$diag));
             my $ncube_volumen = 1;
@@ -203,14 +239,9 @@ sub find {
                 my $zero = 0.5 * ($c0 + $c1);
                 my $corner = $c0 - $zero;
                 $vs0 = [grep { Math::Vector::Real::dist2($corner, ($_ - $zero)->first_orthant_reflection) > $best_d2 } @_];
-                # printf("filtered %d => %d (%.2f%%, estimated %.2f%%)\n",
-                #        scalar(@_), scalar(@$vs0),
-                #        100 * @$vs0/@_,
-                #        100 * (1 - $nellipsoid_volumen / $ncube_volumen));
             }
             else {
                 $vs0 = \@_;
-                # printf "skipping filtering, volumen ratio: %.2%%f)\n", $nellipsoid_volumen / $ncube_volumen * 100;
             }
         }
         else {
@@ -273,12 +304,22 @@ sub find {
     else {
         @best_vs = ($_[0], $_[0]);
     }
-    wantarray ? ($best_d2, map(V(@$_), @best_vs)) : $best_d2;
+    wantarray ? ($best_d2, map V(@$_), @best_vs) : $best_d2;
 }
 
 sub find_brute_force {
     shift;
     goto &_find_brute_force;
+}
+
+sub find_2d_convex_hull {
+    shift;
+
+    return unless @_;
+    my $dim = @{$_[0]};
+    $dim == 2 or croak "find_2d_convex_hull called with vectors of dimension $dim";
+
+    goto &_find_2d_convex_hull;
 }
 
 1;
@@ -321,6 +362,20 @@ number of vectors is low.
 This method is provided just for testing pourposes. Though, note that
 the vectors returned by C<find> and C<find_brute_force> for the same
 given set may be different.
+
+=item ($d2, $v0, $v1) = Math::Vector::Real::Farthest->find_2d_convex_hull
+
+In order to calculate the diameter of a set of bidimensional vectors,
+the algorithm commonly recomended on the literature is to calculate
+the convex hull and then to use the rotating-calipers method to find
+the two more distant vectors from it. This method implements that
+algorithm.
+
+Benchmarks show that the generic algorithm used by C<find> is usually
+much faster.
+
+See also [http://en.wikipedia.org/wiki/Convex_hull|convex hull] and
+[http://en.wikipedia.org/wiki/Rotating_calipers|rotating calipers].
 
 =back
 
