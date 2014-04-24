@@ -385,14 +385,16 @@ The methods available are as follows:
 =item ($d2, $v0, $v1) = Math::Vector::Real::Farthest->find(@vs)
 
 Returns the square of the maximun distance between any two vectors on
-the given set and some two vectors which are actually that far away.
+the given set (AKA the set diameter squared) and some two vectors
+which are actually that far away.
 
 =item ($d2, $v0, $v1) = Math::Vector::Real::Farthest->find_brute_force(@vs)
 
-This is an alternate version that uses the brute force algorithm.
+This is an alternative implementation of C<find> that uses the brute
+force algorithm.
 
-Note that C<find> switchs automatically to this algorithm when the
-number of vectors is low.
+The C<find> method already switchs automatically to the brute force
+algorithm when the number of vectors is low.
 
 This method is provided just for testing pourposes. Though, note that
 the vectors returned by C<find> and C<find_brute_force> for the same
@@ -402,9 +404,9 @@ given set may be different.
 
 In order to calculate the diameter of a set of bidimensional vectors,
 the algorithm commonly recomended on the literature is to calculate
-the convex hull and then to use the rotating-calipers method to find
-the two more distant vectors from it. This method implements that
-algorithm.
+the convex hull of the set and then to use the rotating-calipers
+method to find the two more distant vectors from it. This method
+implements that algorithm.
 
 Benchmarks show that the generic algorithm used by C<find> is usually
 much faster.
