@@ -11,8 +11,7 @@ use Math::Vector::Real::Farthest;
 use Test::More tests => 300;
 
 for my $test (0..99) {
-    # my $dim = 1 + int rand 10;
-    my $dim = 1 + int rand 3;
+    my $dim = 1 + int rand 10;
     my $size = 1 + int(2 ** rand 10);
     my $id = "(dim: $dim, size: $size)";
     diag $id;
