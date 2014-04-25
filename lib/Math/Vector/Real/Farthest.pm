@@ -7,7 +7,6 @@ use warnings;
 
 use Math::Vector::Real;
 use Sort::Key::Top qw(nkeypartref);
-use Sort::Key::Radix qw(nkeysort);
 use Math::nSphere qw(nsphere_volumen);
 use Carp;
 
@@ -63,8 +62,12 @@ sub _find_1d {
     wantarray ? ($d2, V($min), V($max)) : $d2;
 }
 
+
+my $skr_loaded;
 sub _find_2d_convex_hull {
-    my @p = nkeysort { $_->[0] } @_;
+
+    $skr_loaded++ or require Sort::Key::Radix;
+    my @p = &Sort::Key::Radix::nkeysort sub { $_->[0] }, @_;
 
     # use GD;
     # my $size = 1024;
@@ -430,7 +433,13 @@ See also the Wikipedia entries for L<convex
 hull|http://en.wikipedia.org/wiki/Convex_hull> and L<rotating
 calipers|http://en.wikipedia.org/wiki/Rotating_calipers>.
 
+In order to use this method the extra module L<Sort::Key::Radix> must
+be also installed.
+
 =back
+
+If this module is not fast enough for you, tell me. Maybe in a happy
+day I could write a C/XS version.
 
 =head1 SEE ALSO
 

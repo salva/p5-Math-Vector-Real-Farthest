@@ -20,6 +20,9 @@ This module requires these other modules and libraries:
   Math::nSphere
   Sort::Key::Top
 
+The module Sort::Key::Radix is required if the method
+find_2d_convex_hull is going to be used.
+
 COPYRIGHT AND LICENCE
 
 Copyright (C) 2014 by Salvador Fandino
