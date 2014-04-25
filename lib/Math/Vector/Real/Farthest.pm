@@ -13,6 +13,8 @@ use Carp;
 
 our $optimization_core = 1;
 our $optimization_convex_hull = 0;
+our $threshold_brute_force = 16;
+our $O = 0;
 
 use constant _c0 => 0;
 use constant _c1 => 1;
@@ -20,8 +22,6 @@ use constant _n  => 2;
 use constant _vs => 3;
 use constant _s0 => 4;
 use constant _s1 => 5;
-
-use constant _threshold => 5;
 
 sub _find_brute_force {
     my $best_d2 = 0;
@@ -189,7 +189,7 @@ sub find {
     }
 
     my ($best_d2, @best_vs);
-    my $O = 1;
+    $O++;
     my ($c0, $c1) = Math::Vector::Real->box(@_);
     my $diag = $c1 - $c0;
     my $max_comp = $diag->max_component;
@@ -261,9 +261,10 @@ sub find {
             my $b = pop @b;
             ($a, $b) = ($b, $a) if $b and $a->[_n] < $b->[_n];
             if (my $avs = $a->[_vs]) {
-                if ($a->[_n] <= _threshold) {
+                if ($a->[_n] <= $threshold_brute_force) {
                     if ($b) {
                         # brute force
+                        $O += @$avs * $b->[_n];
                         for my $v0 (@{$b->[_vs]}) {
                             for my $v1 (@$avs) {
                                 my $d2 = Math::Vector::Real::dist2($v0, $v1);
@@ -275,6 +276,7 @@ sub find {
                         }
                     }
                     else {
+                        $O += ((@$avs - 1) * @$avs) >> 1;
                         for my $i (1..$#$avs) {
                             my $v0 = $avs->[$i];
                             for my $v1 (@$avs[0 .. $i - 1]) {
@@ -290,6 +292,7 @@ sub find {
                 }
 
                 # else part it in two...
+                $O += @$avs;
                 my $ix = ($a->[_c0] - $a->[_c1])->max_component_index;
                 my ($avs0, $avs1) = nkeypartref { $_->[$ix] } @$avs / 2 => @$avs;
                 $a->[_s0] = [Math::Vector::Real->box(@$avs0), scalar(@$avs0), $avs0];
@@ -327,6 +330,7 @@ sub find {
                 if ($d2 > $best_d2) {
                     my $p;
                     for ($p = @d2; $p > 0; $p--) {
+                        $O++;
                         last if $d2[$p - 1] <= $d2;
                     }
                     splice @d2, $p, 0, $d2;
@@ -371,10 +375,9 @@ Math::Vector::Real::Farthest - Find the two more distant vectors from a set
 
 =head1 DESCRIPTION
 
-This module implements an algorithm based on a k-d Tree for finding
-the two more distant vectors from a given set.
-
-The complexity of the algorithm is O(N*logN)
+This module implements several algorithms for finding the maximum
+distance between any two vectors from a given set (AKA the set
+diameter) and some two vectors that are that far away.
 
 =head2 METHODS
 
@@ -387,6 +390,17 @@ The methods available are as follows:
 Returns the square of the maximun distance between any two vectors on
 the given set (AKA the set diameter squared) and some two vectors
 which are actually that far away.
+
+The algorithm used by this method is similar to the one described in
+L<http://sarielhp.org/p/00/diam.html|"A Practical Approach for
+Computing the Diameter of a Point-Set", SOCG_2001, Sariel
+Har-Peled>. The main difference being that, when dividing the subset
+in some tree node along the largest side of the wrapping box, instead
+of doing it at the middle point it does it at the median.
+
+The global C<$Math::Vector::Real::Farthes::threshold_brute_force>
+defines the subset size at which the algorithm switches to the
+brute-force algorithm (which is more efficient for small data sizes).
 
 =item ($d2, $v0, $v1) = Math::Vector::Real::Farthest->find_brute_force(@vs)
 
