@@ -391,12 +391,13 @@ Returns the square of the maximun distance between any two vectors on
 the given set (AKA the set diameter squared) and some two vectors
 which are actually that far away.
 
-The algorithm used by this method is similar to the one described in
-L<http://sarielhp.org/p/00/diam.html|"A Practical Approach for
-Computing the Diameter of a Point-Set", SOCG_2001, Sariel
-Har-Peled>. The main difference being that, when dividing the subset
-in some tree node along the largest side of the wrapping box, instead
-of doing it at the middle point it does it at the median.
+The algorithm used in this method is quite similar to the one
+described in L<"A Practical Approach for Computing the Diameter of a
+Point-Set", SOCG_2001, Sariel
+Har-Peled|http://sarielhp.org/p/00/diam.html>. The main difference
+being that, when dividing the subset in some tree node along the
+largest side of the wrapping box, instead of doing it at the middle
+point it does it at the median.
 
 The global C<$Math::Vector::Real::Farthes::threshold_brute_force>
 defines the subset size at which the algorithm switches to the
@@ -417,7 +418,7 @@ given set may be different.
 =item ($d2, $v0, $v1) = Math::Vector::Real::Farthest->find_2d_convex_hull
 
 In order to calculate the diameter of a set of bidimensional vectors,
-the algorithm commonly recomended on the literature is to calculate
+an algorithm commonly recomended on the literature is to calculate
 the convex hull of the set and then to use the rotating-calipers
 method to find the two more distant vectors from it. This method
 implements that algorithm.
@@ -425,14 +426,28 @@ implements that algorithm.
 Benchmarks show that the generic algorithm used by C<find> is usually
 much faster.
 
-See also [http://en.wikipedia.org/wiki/Convex_hull|convex hull] and
-[http://en.wikipedia.org/wiki/Rotating_calipers|rotating calipers].
+See also the Wikipedia entries for L<convex
+hull|http://en.wikipedia.org/wiki/Convex_hull> and L<rotating
+calipers|http://en.wikipedia.org/wiki/Rotating_calipers>.
 
 =back
 
 =head1 SEE ALSO
 
 L<Math::Vector::Real>.
+
+I have found two papers describing efficient algorithms for solving
+the set diameter problem. One is L<"A Practical Approach for Computing
+the Diameter of a Point-Set", SOCG_2001, Sariel
+Har-Peled|http://sarielhp.org/p/00/diam.html>; the other L<"Computing
+the Diameter of a Point Set", INRIA 2001, Malandain, GrE<eacute>goire
+and Boissonnat,
+Jean-Daniel|http://www-sop.inria.fr/members/Gregoire.Malandain/diameter/>
+(the links to the paper are dead, but Google is able to find the
+file, look for C<dgci-2002.ps.gz>).
+
+Note that the source code for Math::Vector::Real::Farthest is not
+based on the code provided with those papers.
 
 =head1 COPYRIGHT AND LICENSE
 
