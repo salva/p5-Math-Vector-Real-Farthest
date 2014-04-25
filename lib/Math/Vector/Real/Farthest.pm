@@ -192,7 +192,7 @@ sub find {
     }
 
     my ($best_d2, @best_vs);
-    $O++;
+    ### $O++;
     my ($c0, $c1) = Math::Vector::Real->box(@_);
     my $diag = $c1 - $c0;
     my $max_comp = $diag->max_component;
@@ -259,7 +259,7 @@ sub find {
         while (@d2) {
             my $d2 = pop @d2;
             $d2 > $best_d2 or last;
-            $O++;
+            ### $O++;
             my $a = pop @a;
             my $b = pop @b;
             ($a, $b) = ($b, $a) if $b and $a->[_n] < $b->[_n];
@@ -267,7 +267,7 @@ sub find {
                 if ($a->[_n] <= $threshold_brute_force) {
                     if ($b) {
                         # brute force
-                        $O += @$avs * $b->[_n];
+                        ### $O += @$avs * $b->[_n];
                         for my $v0 (@{$b->[_vs]}) {
                             for my $v1 (@$avs) {
                                 my $d2 = Math::Vector::Real::dist2($v0, $v1);
@@ -279,7 +279,7 @@ sub find {
                         }
                     }
                     else {
-                        $O += ((@$avs - 1) * @$avs) >> 1;
+                        ### $O += ((@$avs - 1) * @$avs) >> 1;
                         for my $i (1..$#$avs) {
                             my $v0 = $avs->[$i];
                             for my $v1 (@$avs[0 .. $i - 1]) {
@@ -295,7 +295,7 @@ sub find {
                 }
 
                 # else part it in two...
-                $O += @$avs;
+                ### $O += @$avs;
                 my $ix = ($a->[_c0] - $a->[_c1])->max_component_index;
                 my ($avs0, $avs1) = nkeypartref { $_->[$ix] } @$avs / 2 => @$avs;
                 $a->[_s0] = [Math::Vector::Real->box(@$avs0), scalar(@$avs0), $avs0];
@@ -333,7 +333,7 @@ sub find {
                 if ($d2 > $best_d2) {
                     my $p;
                     for ($p = @d2; $p > 0; $p--) {
-                        $O++;
+                        ### $O++;
                         last if $d2[$p - 1] <= $d2;
                     }
                     splice @d2, $p, 0, $d2;
