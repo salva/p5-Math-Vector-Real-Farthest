@@ -67,7 +67,7 @@ my $skr_loaded;
 sub _find_2d_convex_hull {
 
     $skr_loaded++ or require Sort::Key::Radix;
-    my @p = &Sort::Key::Radix::nkeysort sub { $_->[0] }, @_;
+    my @p = &Sort::Key::Radix::nkeysort(sub { $_->[0] }, @_);
 
     # use GD;
     # my $size = 1024;
