@@ -14,7 +14,7 @@ for my $test (0..99) {
     my $dim = 1 + int rand 10;
     my $size = 1 + int(2 ** rand 10);
     my $id = "(dim: $dim, size: $size)";
-    diag $id;
+    # diag $id;
     my @v = map { V(map rand, 1..$dim) } 1..$size;
     my ($d2, $v0, $v1) = Math::Vector::Real::Farthest->find(@v);
     my ($d2bf, $v0bf, $v1bf) = Math::Vector::Real::Farthest->find_brute_force(@v);
