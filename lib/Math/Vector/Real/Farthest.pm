@@ -1,12 +1,12 @@
 package Math::Vector::Real::Farthest;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use strict;
 use warnings;
 
 use Math::Vector::Real;
-use Sort::Key::Top qw(nkeypartref);
+use Sort::Key::Top qw(nslotpartref);
 use Math::nSphere qw(nsphere_volumen);
 use Carp;
 
@@ -297,7 +297,7 @@ sub find {
                 # else part it in two...
                 ### $O += @$avs;
                 my $ix = ($a->[_c0] - $a->[_c1])->max_component_index;
-                my ($avs0, $avs1) = nkeypartref { $_->[$ix] } @$avs / 2 => @$avs;
+                my ($avs0, $avs1) = nslotpartref $ix => @$avs / 2 => @$avs;
                 $a->[_s0] = [Math::Vector::Real->box(@$avs0), scalar(@$avs0), $avs0];
                 $a->[_s1] = [Math::Vector::Real->box(@$avs1), scalar(@$avs1), $avs1];
                 undef $a->[_vs];
